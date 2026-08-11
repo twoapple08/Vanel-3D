@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>3D Character Standing Viewer</title>
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #121212;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    
+    model-viewer {
+      width: 100vw;
+      height: 100vh;
+      --poster-color: transparent;
+    }
+
+    .selector-container {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .toggle-btn {
+      background: rgba(30, 30, 30, 0.85);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 10px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      outline: none;
+      user-select: none;
+    }
+
+    .toggle-btn:active {
+      transform: scale(0.96);
+    }
+
+    .menu-list {
+      margin-top: 8px;
+      background: rgba(20, 20, 20, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 220px;
+      max-height: 320px;
+      overflow-y: auto;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all 0.25s ease-in-out;
+    }
+
+    .menu-list.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .model-item {
+      background: rgba(255, 255, 255, 0.05);
+      color: #cccccc;
+      border: 1px solid transparent;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .model-item:hover, .model-item.active {
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.3);
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <model-viewer 
+    id="viewer"
+    src="" 
+    alt="3D 캐릭터 스탠딩 모델" 
+    camera-controls 
+    touch-action="pan-y" 
+    shadow-intensity="0.5" 
+    exposure="1"
+    power-preference="high-performance"
+    interaction-prompt="none">
+  </model-viewer>
+
+  <div class="selector-container">
+    <button class="toggle-btn" id="toggleBtn" onclick="toggleMenu()">
+      <span>📂 모델 선택</span>
+      <span id="arrow">▾</span>
+    </button>
+
+    <div class="menu-list" id="menuList">
+      <!-- JavaScript 연산에 의해 목록이 자동 생성됩니다 -->
+    </div>
+  </div>
+
+  <script>
+    /* 
+      =======================================================
+      [ 마스터 전용 모델 설정 데이터 양식 ]
+      아래 { name: "...", file: "..." } 한 줄을 복사하여
+      줄바꿈 후 붙여넣기하는 방식으로 선택지를 무제한 확장할 수 있습니다.
+
+      - name: 화면 우측 상단 메뉴에 표시될 명칭
+      - file: model/ 폴더 내 위치한 실제 GLB 파일명
+      =======================================================
+    */
+    const MODEL_LIST = [
+      { name: "시르타르", file: "model-sir.glb" }
+      // [복사-붙여넣기 양식 예시]
+      // { name: "보이는 이름 입력", file: "파일명.glb" },
+    ];
+
+    // DOM 로드 완료 시 메뉴 및 초기 모델 자동 배치 연산
+    document.addEventListener("DOMContentLoaded", () => {
+      const menuList = document.getElementById('menuList');
+      const viewer = document.getElementById('viewer');
+
+      if (MODEL_LIST.length > 0) {
+        // 배열의 0번 모델을 초기 로드 모델로 자동 지정
+        viewer.src = `model/${MODEL_LIST[0].file}`;
+
+        MODEL_LIST.forEach((item, index) => {
+          const btn = document.createElement('button');
+          btn.className = `model-item ${index === 0 ? 'active' : ''}`;
+          btn.textContent = item.name;
+          btn.onclick = () => selectModel(`model/${item.file}`, btn);
+          menuList.appendChild(btn);
+        });
+      }
+    });
+
+    function toggleMenu() {
+      const menuList = document.getElementById('menuList');
+      const arrow = document.getElementById('arrow');
+      menuList.classList.toggle('open');
+      arrow.textContent = menuList.classList.contains('open') ? '▴' : '▾';
+    }
+
+    function selectModel(modelPath, btnElement) {
+      const viewer = document.getElementById('viewer');
+      viewer.src = modelPath;
+
+      const items = document.querySelectorAll('.model-item');
+      items.forEach(item => item.classList.remove('active'));
+      btnElement.classList.add('active');
+
+      toggleMenu();
+    }
+  </script>
+
+</body>
+</html>
